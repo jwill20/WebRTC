@@ -1,18 +1,12 @@
-var connection = new WebSocket('ws://localhost:8888'),
-    name = "";
+//Example derived from "Learning WebRTC" by Dan Ristic
 
-var loginPage = document.querySelector('#login-page'),
-    usernameInput = document.querySelector('#username'),
-    loginButton = document.querySelector('#login'),
-    callPage = document.querySelector('#call-page'),
-    theirUsernameInput = document.querySelector('#their-username'),
-    callButton = document.querySelector('#call'),
-    hangUpButton = document.querySelector('#hang-up');
+var connection = new WebSocket('ws://localhost:8888'),
 
 callPage.style.display = "none";
 
 // Login when the user clicks the button
-loginButton.addEventListener("click", function (event) {
+loginButton.addEventListener("click", function (event) 
+{
   name = usernameInput.value;
 
   if (name.length > 0) {
@@ -23,13 +17,14 @@ loginButton.addEventListener("click", function (event) {
   }
 });
 
-connection.onopen = function () {
+connection.onopen = function () 
+{
   console.log("Connected");
 };
 
-// Handle all messages through this callback
-connection.onmessage = function (message) {
-  console.log("Got message", message.data);
+connection.onmessage = function (message) 
+{
+  console.log("Received message", message.data);
 
   var data = JSON.parse(message.data);
 
@@ -54,12 +49,13 @@ connection.onmessage = function (message) {
   }
 };
 
-connection.onerror = function (err) {
+connection.onerror = function (err) 
+{
   console.log("Got error", err);
 };
 
-// Alias for sending messages in JSON format
-function send(message) {
+function send(message) 
+{
   if (connectedUser) {
     message.name = connectedUser;
   }
@@ -67,19 +63,21 @@ function send(message) {
   connection.send(JSON.stringify(message));
 };
 
-function onLogin(success) {
-  if (success === false) {
+function onLogin(success) 
+{
+  if (success === false) 
+  {
     alert("Login unsuccessful, please try a different name.");
   } else {
     loginPage.style.display = "none";
     callPage.style.display = "block";
 
-    // Get the plumbing ready for a call
     startConnection();
   }
 };
 
-callButton.addEventListener("click", function () {
+callButton.addEventListener("click", function () 
+{
   var theirUsername = theirUsernameInput.value;
 
   if (theirUsername.length > 0) {
@@ -87,7 +85,8 @@ callButton.addEventListener("click", function () {
   }
 });
 
-hangUpButton.addEventListener("click", function () {
+hangUpButton.addEventListener("click", function () 
+{
   send({
     type: "leave"
   });
@@ -95,7 +94,8 @@ hangUpButton.addEventListener("click", function () {
   onLeave();
 });
 
-function onOffer(offer, name) {
+function onOffer(offer, name) 
+{
   connectedUser = name;
   yourConnection.setRemoteDescription(new RTCSessionDescription(offer));
 
@@ -110,15 +110,18 @@ function onOffer(offer, name) {
   });
 }
 
-function onAnswer(answer) {
+function onAnswer(answer) 
+{
   yourConnection.setRemoteDescription(new RTCSessionDescription(answer));
 };
 
-function onCandidate(candidate) {
+function onCandidate(candidate) 
+{
   yourConnection.addIceCandidate(new RTCIceCandidate(candidate));
 };
 
-function onLeave() {
+function onLeave() 
+{
   connectedUser = null;
   theirVideo.src = null;
   yourConnection.close();
@@ -127,12 +130,14 @@ function onLeave() {
   setupPeerConnection(stream);
 };
 
-function hasUserMedia() {
+function hasUserMedia() 
+{
   navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
   return !!navigator.getUserMedia;
 };
 
-function hasRTCPeerConnection() {
+function hasRTCPeerConnection() 
+{
   window.RTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
   window.RTCSessionDescription = window.RTCSessionDescription || window.webkitRTCSessionDescription || window.mozRTCSessionDescription;
   window.RTCIceCandidate = window.RTCIceCandidate || window.webkitRTCIceCandidate || window.mozRTCIceCandidate;
@@ -143,9 +148,12 @@ var yourVideo = document.querySelector('#yours'),
     theirVideo = document.querySelector('#theirs'),
     yourConnection, connectedUser, stream;
 
-function startConnection() {
-  if (hasUserMedia()) {
-    navigator.getUserMedia({ video: true, audio: false }, function (myStream) {
+function startConnection() 
+{
+  if (hasUserMedia()) 
+  {
+    navigator.getUserMedia({ video: true, audio: false }, function (myStream) 
+    {
       stream = myStream;
       yourVideo.src = window.URL.createObjectURL(stream);
 
@@ -162,8 +170,10 @@ function startConnection() {
   }
 };
 
-function setupPeerConnection(stream) {
-  var configuration = {
+function setupPeerConnection(stream) 
+{
+  var configuration = 
+  {
     "iceServers": [{ "url": "stun:127.0.0.1:9876" }]
   };
   yourConnection = new RTCPeerConnection(configuration);
@@ -175,8 +185,10 @@ function setupPeerConnection(stream) {
   };
 
   // Setup ice handling
-  yourConnection.onicecandidate = function (event) {
-    if (event.candidate) {
+  yourConnection.onicecandidate = function (event) 
+  {
+    if (event.candidate) 
+    {
       send({
         type: "candidate",
         candidate: event.candidate
@@ -185,11 +197,13 @@ function setupPeerConnection(stream) {
   };
 };
 
-function startPeerConnection(user) {
+function startPeerConnection(user) 
+{
   connectedUser = user;
 
   // Begin the offer
-  yourConnection.createOffer(function (offer) {
+  yourConnection.createOffer(function (offer) 
+  {
     send({
       type: "offer",
       offer: offer

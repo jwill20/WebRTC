@@ -1,19 +1,21 @@
-var name,
-    connectedUser;
+//Example derived from code in "Learning WebRTC" by Dan Ristic
+
 
 var connection = new WebSocket('ws://9.80.234.172:8888');
 
-connection.onopen = function () {
+connection.onopen = function () 
+{
   console.log("Connected");
 };
 
-// Handle all messages through this callback
-connection.onmessage = function (message) {
-  console.log("Got message", message.data);
+connection.onmessage = function (message) 
+{
+  console.log("Received message", message.data);
 
   var data = JSON.parse(message.data);
 
-  switch(data.type) {
+  switch(data.type) 
+  {
     case "login":
       onLogin(data.success);
       break;
@@ -34,34 +36,30 @@ connection.onmessage = function (message) {
   }
 };
 
-connection.onerror = function (err) {
+connection.onerror = function (err) 
+{
   console.log("Got error", err);
 };
 
 // Alias for sending messages in JSON format
-function send(message) {
-  if (connectedUser) {
+function send(message) 
+{
+  if (connectedUser) 
+  {
     message.name = connectedUser;
   }
 
   connection.send(JSON.stringify(message));
 };
 
-var loginPage = document.querySelector('#login-page'),
-    usernameInput = document.querySelector('#username'),
-    loginButton = document.querySelector('#login'),
-    callPage = document.querySelector('#call-page'),
-    theirUsernameInput = document.querySelector('#their-username'),
-    callButton = document.querySelector('#call'),
-    hangUpButton = document.querySelector('#hang-up');
-
 callPage.style.display = "none";
 
-// Login when the user clicks the button
-loginButton.addEventListener("click", function (event) {
+loginButton.addEventListener("click", function (event) 
+{
   name = usernameInput.value;
 
-  if (name.length > 0) {
+  if (name.length > 0) 
+  {
     send({
       type: "login",
       name: name
@@ -69,10 +67,13 @@ loginButton.addEventListener("click", function (event) {
   }
 });
 
-function onLogin(success) {
-  if (success === false) {
+function onLogin(success) 
+{
+  if (success === false) 
+  {
     alert("Login unsuccessful, please try a different name.");
-  } else {
+  } else 
+  {
     loginPage.style.display = "none";
     callPage.style.display = "block";
 
@@ -85,40 +86,52 @@ var yourVideo = document.querySelector('#yours'),
     theirVideo = document.querySelector('#theirs'),
     yourConnection, connectedUser, stream;
 
-function startConnection() {
-  if (hasUserMedia()) {
-    navigator.getUserMedia({ video: true, audio: false }, function (myStream) {
+function startConnection() 
+{
+  if (hasUserMedia()) 
+  {
+    navigator.getUserMedia({ video: true, audio: false }, function (myStream) 
+    {
       stream = myStream;
       yourVideo.src = window.URL.createObjectURL(stream);
 
-      if (hasRTCPeerConnection()) {
+      if (hasRTCPeerConnection()) 
+      {
         setupPeerConnection(stream);
-      } else {
-        alert("Sorry, your browser does not support WebRTC.");
+      } else 
+      {
+        alert("Your browser does not support WebRTC.");
       }
-    }, function (error) {
+    }, function (error) 
+    {
       console.log(error);
     });
-  } else {
-    alert("Sorry, your browser does not support WebRTC.");
+  } else 
+  {
+    alert("Your browser does not support WebRTC.");
   }
 }
 
-function setupPeerConnection(stream) {
-  var configuration = {
+function setupPeerConnection(stream) 
+{
+  var configuration = 
+  {
     "iceServers": [{ "url": "stun:127.0.0.1:9876" }]
   };
   yourConnection = new RTCPeerConnection(configuration);
 
   // Setup stream listening
   yourConnection.addStream(stream);
-  yourConnection.onaddstream = function (e) {
+  yourConnection.onaddstream = function (e) 
+  {
     theirVideo.src = window.URL.createObjectURL(e.stream);
   };
 
   // Setup ice handling
-  yourConnection.onicecandidate = function (event) {
-    if (event.candidate) {
+  yourConnection.onicecandidate = function (event) 
+  {
+    if (event.candidate) 
+    {
       send({
         type: "candidate",
         candidate: event.candidate
@@ -127,19 +140,22 @@ function setupPeerConnection(stream) {
   };
 }
 
-function hasUserMedia() {
+function hasUserMedia() 
+{
   navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
   return !!navigator.getUserMedia;
 }
 
-function hasRTCPeerConnection() {
+function hasRTCPeerConnection() 
+{
   window.RTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
   window.RTCSessionDescription = window.RTCSessionDescription || window.webkitRTCSessionDescription || window.mozRTCSessionDescription;
   window.RTCIceCandidate = window.RTCIceCandidate || window.webkitRTCIceCandidate || window.mozRTCIceCandidate;
   return !!window.RTCPeerConnection;
 }
 
-callButton.addEventListener("click", function () {
+callButton.addEventListener("click", function () 
+{
   var theirUsername = theirUsernameInput.value;
 
   if (theirUsername.length > 0) {
@@ -147,11 +163,13 @@ callButton.addEventListener("click", function () {
   }
 });
 
-function startPeerConnection(user) {
+function startPeerConnection(user) 
+{
   connectedUser = user;
 
   // Begin the offer
-  yourConnection.createOffer(function (offer) {
+  yourConnection.createOffer(function (offer) 
+  {
     send({
       type: "offer",
       offer: offer
@@ -162,7 +180,8 @@ function startPeerConnection(user) {
   });
 };
 
-function onOffer(offer, name) {
+function onOffer(offer, name) 
+{
   connectedUser = name;
   yourConnection.setRemoteDescription(new RTCSessionDescription(offer));
 
@@ -177,15 +196,18 @@ function onOffer(offer, name) {
   });
 };
 
-function onAnswer(answer) {
+function onAnswer(answer) 
+{
   yourConnection.setRemoteDescription(new RTCSessionDescription(answer));
 };
 
-function onCandidate(candidate) {
+function onCandidate(candidate) 
+{
   yourConnection.addIceCandidate(new RTCIceCandidate(candidate));
 };
 
-hangUpButton.addEventListener("click", function () {
+hangUpButton.addEventListener("click", function () 
+{
   send({
     type: "leave"
   });
@@ -193,7 +215,8 @@ hangUpButton.addEventListener("click", function () {
   onLeave();
 });
 
-function onLeave() {
+function onLeave() 
+{
   connectedUser = null;
   theirVideo.src = null;
   yourConnection.close();
