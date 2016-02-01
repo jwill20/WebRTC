@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html>
+<head>
+   <meta charset="UTF-8">
+   <title>CloudFirst Bank</title>
+   <!-- Load the CSS -->
+   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+   <link href="resources/css/video.css" rel="stylesheet"/> 
+</head>
+<body>
+<div id="headName">Welcome to our Person to Person Help System</div>
+<!--------------------------------------------------------------------------------------->
+<!-- Page container                                                                    -->
+<!--------------------------------------------------------------------------------------->
+<div id="MainContainer" class="mainContentContainer">
+  <div id="topContainer">
+     <div class="pull-left logo">
+        <span class="blue"></span>CloudFirst Bank
+     </div>
+  </div> <!-- End of the topContainer -->
+  
+<!--------------------------------------------------------------------------------------->
+<!-- Video elements                                                                    -->
+<!--------------------------------------------------------------------------------------->
+  <div id="videoContainer">
+    <!-- 'MUTE' this (muted="true") or you will get feedback -->
+    <video title="selfView" poster='resources/images/yourImage.png' id="selfView" class="selfView" autoplay="true" muted="true"></video>
+    <video title="remoteView" poster='resources/images/customerImage.png' id="remoteView" class="remoteView" autoplay="true"></video>
+  </div> <!-- End of the videoContainer -->
+
+<!--------------------------------------------------------------------------------------->
+<!-- Page buttons                                                                      -->
+<!--------------------------------------------------------------------------------------->
+  <div class="video-controls">
+    <div class="btn-group pull-left" style='padding-top:10px'>
+      <button id='btnRegister' class='btn btn-primary'>Prepare Video Conference</button>
+      <button id='btnConnect' class='btn btn-default' disabled='disabled'>Connect to Bank Employee</button>
+    </div>
+  </div> <!-- End of the video-controls -->
+</div> <!-- end of the MainContainer -->
+
+<!--------------------------------------------------------------------------------------->
+<!-- Backdoor to change user to bank employee from customer                            -->
+<!--------------------------------------------------------------------------------------->
+<div id='backdoorSection'>
+      <button id='backdoorButton' class='btn btn-link'>Copyright 2015 - CFB</button>
+</div>
+<!--------------------------------------------------------------------------------------->
+<!-- Bank Employee information panel - all hard-coded for demo                         -->
+<!--------------------------------------------------------------------------------------->
+<div id='employeeSection' style="display:none">
+      <div class="panel panel-info">
+        <div class="panel-heading">
+           <h3 class="panel-title">CloudFirst Bank Teller</h3>
+        </div>
+        <div class="panel-body">Bank Employee: Alice Stevens</br></br>Employee Number: 7BB5436</br></br>Specialty: Commercial Loans</div>
+        <div class="panel-body"></div>
+        <div class="panel-body"></div>
+        <div class="panel-body"></div>
+        <div class="panel-body"></div>
+        <div class="panel-heading">
+           <div class="vsmall">&nbsp;&nbsp;&nbsp;&nbsp;All information is confidential and encrypted</div>
+        </div>
+   </div>
+</div>    
+<!--------------------------------------------------------------------------------------->
+<!-- Using jQeury and bootstrap for UI                                                 -->
+<!--------------------------------------------------------------------------------------->
+<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+
+<!--------------------------------------------------------------------------------------->
+<!-- Bring in mqtt, adapter, and rtcomm                                                -->
+<!--------------------------------------------------------------------------------------->
+<script src="//git.eclipse.org/c/paho/org.eclipse.paho.mqtt.javascript.git/plain/src/mqttws31.js"></script>
+<script src="//cdn.rawgit.com/webrtc/adapter/master/adapter.js"></script>
+<script src="dist/rtcomm.js"></script> 
+
+<!--------------------------------------------------------------------------------------->
+<!-- Main logic of page                                                                -->
+<!--------------------------------------------------------------------------------------->
+<!-- Set initial configuration parameters                                              -->
+<!--------------------------------------------------------------------------------------->
+<script>
+
+// UI State
+var registered = false;
+var connected  = false;
+var user     = "bankCustomer";
+var remoteid = "bankEmployee"
+
+console.log('VideoHelp:main ==> Loading application');
+console.log('VideoHelp:main ==> User = ' + user);
+
+var providerConfig = 
+{
+    server : 'messagesight.demos.ibm.com',
+    //server : 'svt-msd4.rtp.raleigh.ibm.com',
+    // port : window.document.location.port,
+    port : 1883,
+    rtcommTopicPath: "/kushlieTopicPathBluemix/",
+    createEndpoint : true
+  };
+  
+<!--------------------------------------------------------------------------------------->
+<!-- Get the endpointProvider                                                          -->
+<!--------------------------------------------------------------------------------------->
+var ibmep = new rtcomm.EndpointProvider();
+
+var rtcommEndpoint = null;
+
+// bootstrap/jquery make alerts closable
+$().alert();
+
+<!--------------------------------------------------------------------------------------->
+<!-- Handle resets on the endpointProvider                                             -->
+<!--------------------------------------------------------------------------------------->
+ibmep.setRtcommEndpointConfig({
+      autoEnable: true,  // Enabled on connect     
+      webrtcConfig: {       
+        broadcast:  { audio: true, video: true},
+        mediaOut: document.querySelector('#selfView'),
+        mediaIn: document.querySelector('#remoteView')
+      },
+      // Played when call is going out
+      ringbacktone: 'resources/sounds/ringbacktone.wav',
+      // played when inbound call occurrs
+      ringtone: 'resources/sounds/ringtone.wav',
+       
+      <!--------------------------------------------------------------------------------------->
+      <!-- Fired when webRTC is connected                                                    -->
+      <!--------------------------------------------------------------------------------------->
+      'webrtc:connected': function(event_object) 
+      {
+          console.log("webrtc:connected - connected to ==> " + event_object.endpoint.getRemoteEndpointID());
+          uiConnect();
+      },
+      <!--------------------------------------------------------------------------------------->
+      <!-- Fired when webRTC is disconnected                                                 -->
+      <!--------------------------------------------------------------------------------------->
+      'webrtc:disconnected': function(event_object) 
+      {
+         try 
+         {
+           console.log("webrtc:disconnected - disconnected from ==> " + event_object.endpoint.getRemoteEndpointID());
+           uiDisconnect();
+         } 
+         catch (e) 
+         {
+           console.log("webrtc:disconnected ==> " + e);
+         }
+      },
+      <!--------------------------------------------------------------------------------------->
+      <!-- An outbound call is starting and the target user has been reached                 -->
+      <!--------------------------------------------------------------------------------------->
+      'session:ringing': function(event_object) 
+      {
+         console.log("session:ringing ==> " + event_object.endpoint.getRemoteEndpointID() );
+      },
+      <!--------------------------------------------------------------------------------------->
+      <!-- An inbound call was received                                                      -->
+      <!--------------------------------------------------------------------------------------->
+      'session:alerting': function(event_object) 
+      {
+        console.log("session:alerting ==> " + event_object.endpoint.getRemoteEndpointID() );
+        rtcommEndpoint.accept();
+        //$('#answerDialog .modal-body').html("Inbound call from " + event_object.endpoint.getRemoteEndpointID());
+        //$('#answerDialog').modal('show');
+      },
+      <!--------------------------------------------------------------------------------------->
+      <!-- Establlishing the session failed, display a message                               -->
+      <!--------------------------------------------------------------------------------------->
+      'session:failed': function(event_object) 
+      {
+        console.log("session:failed - reason ==> " + event_object.reason);
+      },
+      <!--------------------------------------------------------------------------------------->
+      <!-- 3PCC related - Inbound refer was received                                         -->
+      <!--------------------------------------------------------------------------------------->
+      // An inbound Refer was received.  
+      'session:refer': function(conn) 
+      {
+        console.log("session:refer");
+        rtcommEndpoint.accept();
+        //$('#answerDialog .modal-body').html("[3PCC] Initiate call to " + conn.endpoint.getRemoteEndpointID());
+        //$('#answerDialog').modal('show');
+      }, 
+      <!--------------------------------------------------------------------------------------->
+      <!-- Called when remote user mutes audio or video.                                     -->
+      <!--    event_object.audio = true means it is on                                       -->
+      <!--    event_object.video = true means it is on                                       -->       
+      <!--------------------------------------------------------------------------------------->
+      'webrtc:remotemuted': function(event_object) 
+      {
+        console.log("webrtc:remotemuted");
+         
+        var msg = 'The remote user ';
+        if (event_object.audio) 
+        {
+          if (event_object.video) 
+          {
+            msg = msg + ' resumed their broadcast'; 
+          } 
+          else 
+          {
+            // pretty sure this should say video
+            msg = msg + ' muted their audio broadcast'; 
+          }
+        } 
+        else 
+        {
+          if (event_object.video) 
+          {
+            msg = msg + ' muted their audio broadcast'; 
+          } 
+          else 
+          {
+            // both false means they are both off
+            msg = msg + ' muted their broadcast'; 
+          }
+        }
+      
+       console.log(msg);
+     }
+  });
+
+<!--------------------------------------------------------------------------------------->
+<!-- Handle resets on the endpointProvider                                             -->
+<!--------------------------------------------------------------------------------------->
+  ibmep.on('reset', function(event_object) 
+  {
+    console.log("In ibmep.on(reset) - Connection was reset - reason: " + event_object.reason);
+  });
+
+<!--------------------------------------------------------------------------------------->
+<!-- doRegister function                                                               -->
+<!--------------------------------------------------------------------------------------->
+function doRegister(userid) 
+{
+    console.log('doResister ==> ' + userid);
+
+    providerConfig.userid = userid;
+
+    <!--------------------------------------------------------------------------------------->
+    <!-- Calling init on endpointProvider                                                  -->
+    <!--------------------------------------------------------------------------------------->
+    ibmep.init(providerConfig,
+       function(object) 
+       { 
+          console.log('Init was successful, rtcommEndpoint: ', object);
+          uiRegister();
+          rtcommEndpoint = object.endpoint;
+       }, 
+       function(error) 
+       { 
+         console.log('init failed: ', error);
+         uiUnregister();
+       });
+       
+    return true;
+  };
+  
+  
+<!--------------------------------------------------------------------------------------->
+<!-- Logging                                                                           -->
+<!--------------------------------------------------------------------------------------->
+function logToConsole(message) 
+{
+   console.log(message);
+}
+  
+<!--------------------------------------------------------------------------------------->
+<!-- UI handlers                                                                       -->
+<!--------------------------------------------------------------------------------------->
+ $('#backdoorButton').on('click', function() 
+ {
+    console.log("backdoorButton handler - Switching user to bankEmployee");
+    console.log("backdoorButton handler - user is currently = " + user);
+    user = "bankEmployee";
+    console.log("backdoorButton handler - user is now = " + user);
+ });
+  
+ $('#btnRegister').on('click', function() 
+ {
+    if (registered) 
+    {
+      console.log("btnRegister handler - Going to unregister");
+      ibmep.destroy();
+      uiUnregister();
+    } 
+    else 
+    {
+      console.log('btnRegister handler - Registering');
+      uiRegister();
+      doRegister(user);
+      //$('#registerModal').modal('show');
+    }
+});
+
+$('#btnConnect').on('click', function() 
+{
+  if (connected) 
+  {
+    /* disconnect */
+    console.log('btnConnect handler - Disconnecting');
+    uiDisconnect();
+  } 
+  else 
+  {
+    /* launch connect Modal */
+    console.log('btnConnect handler - Connecting');
+    uiConnect();
+    rtcommEndpoint.connect(remoteid);
+  }
+});
+  
+
+function uiRegister() 
+{
+  console.log('uiRegister - Changing buttons');
+  $('#btnConnect').prop('disabled', false);
+  $('#btnRegister').text('Disable Conference');
+  registered = true;
+  
+  if (user == "bankCustomer")
+  {
+     $('#employeeSection').show();
+  }
+  
+};
+  
+function uiUnregister() 
+{
+  console.log('uiUnregister - Changing buttons ');
+  $('#btnConnect').prop('disabled', true);
+  $('#btnRegister').text('Prepare Video Conference');
+  registered = false;
+  
+  if (user == "bankCustomer")
+  {
+     $('#employeeSection').hide();
+  }
+   
+}
+
+function uiConnect() 
+{
+  $('#btnConnect').text('Disconnect');
+  connected = true;
+};
+
+function uiDisconnect() 
+{
+  if (connected) 
+  {
+    connected = false;
+    rtcommEndpoint.disconnect();
+    $('#btnConnect').text('Connect to Bank Employee');
+  }
+};
+
+  
+</script>   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
